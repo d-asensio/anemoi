@@ -27,37 +27,11 @@ Adafruit_BMP280 bmp;
 float atmospheric_cell_voltage = 0;
 float atmospheric_pressure_bars = 0;
 
-float read_cell_voltage () {
-    float multiplier = 0.1875F;
-    float adc_reading = ads.readADC_Differential_0_1();
-
-    return adc_reading * multiplier;
-}
-
-float read_atmospheric_pressure_bars () {
-    float atmospheric_pressure_pascals = bmp.readPressure();
-    return atmospheric_pressure_pascals / 100000;
-}
-
-float get_O2_partial_pressure_from_voltage (float current_cell_voltage) {
-    return ATMOSPHERIC_O2_FRACTION * atmospheric_pressure_bars * current_cell_voltage / atmospheric_cell_voltage;
-}
-
-void calibrate_cell() {
-    atmospheric_cell_voltage = read_cell_voltage();
-    atmospheric_pressure_bars = read_atmospheric_pressure_bars();
-}
-
-void print_calibrate_message() {
-    display.clearDisplay();
-
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(0, 10);
-
-    display.println("Calibrating...");
-    display.display();
-}
+float read_cell_voltage ();
+float read_atmospheric_pressure_bars ();
+void calibrate_cell();
+void print_calibrate_message();
+float get_O2_partial_pressure_from_voltage (float current_cell_voltage);
 
 void setup() {
     Serial.begin(115200);
@@ -65,6 +39,7 @@ void setup() {
     // Button
     pinMode(BUTTON_SWITCH_PIN, INPUT);
     pinMode(BUTTON_LED_PIN, OUTPUT);
+    digitalWrite(BUTTON_LED_PIN, HIGH);
 
     // Buzzer
     pinMode(BUZZER_PIN, OUTPUT);
@@ -102,20 +77,16 @@ void setup() {
 void loop() {
     button_state = digitalRead(BUTTON_SWITCH_PIN);
 
-    if (button_state == HIGH) {
-        digitalWrite(BUTTON_LED_PIN, HIGH);
+    if (button_state == HIGH && previous_button_state == LOW) {
         digitalWrite(BUZZER_PIN, HIGH);
-
-        if(button_state != previous_button_state) {
-            calibrate_cell();
-            print_calibrate_message();
-            delay(1000);
-        }
-    }
-
-    if (button_state == LOW) {
         digitalWrite(BUTTON_LED_PIN, LOW);
+        delay(100);
         digitalWrite(BUZZER_PIN, LOW);
+
+        calibrate_cell();
+        print_calibrate_message();
+        delay(1000);
+        digitalWrite(BUTTON_LED_PIN, HIGH);
     }
 
     previous_button_state = button_state;
@@ -173,6 +144,37 @@ void loop() {
     } else {
         Serial.println("Forced measurement failed!");
     }
+}
 
-    delay(200);
+float read_cell_voltage () {
+    float multiplier = 0.1875F;
+    float adc_reading = ads.readADC_Differential_0_1();
+
+    return adc_reading * multiplier;
+}
+
+float read_atmospheric_pressure_bars () {
+    float atmospheric_pressure_pascals = bmp.readPressure();
+
+    return atmospheric_pressure_pascals / 100000;
+}
+
+float get_O2_partial_pressure_from_voltage (float current_cell_voltage) {
+    return ATMOSPHERIC_O2_FRACTION * current_cell_voltage / atmospheric_cell_voltage;
+}
+
+void calibrate_cell() {
+    atmospheric_cell_voltage = read_cell_voltage();
+    atmospheric_pressure_bars = read_atmospheric_pressure_bars();
+}
+
+void print_calibrate_message() {
+    display.clearDisplay();
+
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0, 10);
+
+    display.println("Calibrating...");
+    display.display();
 }

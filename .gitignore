@@ -1,1 +1,4 @@
-.pio
+# IDE Files
+.pio/
+.idea/
+.vscode/
