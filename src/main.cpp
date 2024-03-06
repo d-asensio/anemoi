@@ -22,8 +22,8 @@
 
 #define ATMOSPHERIC_O2_FRACTION 0.21
 
-const char *ssid = "ASENSIO_WIFI_2G";
-const char *password = "m3Uf6Xre";
+const char *ssid = WIFI_SSID;
+const char *password = WIFI_PASSWORD;
 
 AsyncWebServer server(80);
 

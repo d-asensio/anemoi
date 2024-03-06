@@ -2,3 +2,6 @@
 .pio/
 .idea/
 .vscode/
+
+## Credentials config file
+private_credentials.ini
