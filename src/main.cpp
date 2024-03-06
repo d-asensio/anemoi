@@ -185,8 +185,10 @@ void init_wifi_connection()
 void init_http_server()
 {
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(LittleFS, "/index.html");
+        request->send(LittleFS, "/index.html", "text/html");
     });
+
+    server.serveStatic("/", LittleFS, "/");
 
     server.begin();
     Serial.println("HTTP server started");

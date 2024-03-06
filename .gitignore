@@ -3,5 +3,8 @@
 .idea/
 .vscode/
 
+# Generated files
+data/
+
 ## Credentials config file
 private_credentials.ini
