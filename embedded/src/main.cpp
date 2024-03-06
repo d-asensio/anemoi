@@ -32,7 +32,7 @@ AsyncWebSocket ws("/ws");
 JSONVar readings;
 
 unsigned long last_time = 0;
-unsigned long timer_delay = 100;
+unsigned long timer_delay = 300;
 
 int button_state = LOW;
 int previous_button_state = LOW;
