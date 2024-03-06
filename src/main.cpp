@@ -1,9 +1,12 @@
 #include <Arduino.h>
 
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-
 #include <Wire.h>
+#include <LittleFS.h>
+
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_ADS1X15.h>
@@ -22,7 +25,7 @@
 const char *ssid = "ASENSIO_WIFI_2G";
 const char *password = "m3Uf6Xre";
 
-ESP8266WebServer server(80);
+AsyncWebServer server(80);
 
 int button_state = LOW;
 int previous_button_state = LOW;
@@ -37,14 +40,11 @@ float atmospheric_pressure_bars = 0;
 void init_i2c_display();
 void init_i2c_bpm();
 void init_wifi_connection();
+void init_filesystem();
 void init_http_server();
 void init_button_switch();
 void init_i2c_ads();
 void init_buzzer();
-
-void handle_http_not_found();
-void handle_http_on_connect();
-String send_http_html_response(uint8_t led1stat, uint8_t led2stat);
 
 float read_cell_voltage();
 float read_atmospheric_pressure_bars();
@@ -63,6 +63,7 @@ void setup()
     init_i2c_ads();
     init_i2c_bpm();
 
+    init_filesystem();
     init_wifi_connection();
     init_http_server();
 
@@ -72,8 +73,6 @@ void setup()
 
 void loop()
 {
-    server.handleClient();
-
     button_state = digitalRead(BUTTON_SWITCH_PIN);
 
     if (button_state == HIGH && previous_button_state == LOW)
@@ -148,13 +147,13 @@ void loop()
     }
 }
 
-
 void init_i2c_bpm()
 {
     if (!bmp.begin(0x76))
     {
         Serial.println(F("Could not find a valid BMP280 sensor, check wiring or try a different address!"));
-        while (1);
+        while (1)
+            ;
     }
 
     /* Default settings from datasheet. */
@@ -185,8 +184,9 @@ void init_wifi_connection()
 
 void init_http_server()
 {
-    server.on("/", handle_http_on_connect);
-    server.onNotFound(handle_http_not_found);
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(LittleFS, "/index.html");
+    });
 
     server.begin();
     Serial.println("HTTP server started");
@@ -214,6 +214,15 @@ void init_buzzer()
     pinMode(BUZZER_PIN, OUTPUT);
 }
 
+void init_filesystem()
+{
+    if (!LittleFS.begin())
+    {
+        Serial.println("An Error has occurred while mounting LittleFS");
+        return;
+    }
+}
+
 void init_i2c_display()
 {
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
@@ -222,59 +231,6 @@ void init_i2c_display()
         while (1)
             ;
     }
-}
-
-String send_http_html_response(uint8_t led1stat, uint8_t led2stat)
-{
-    String ptr = "<!DOCTYPE html> <html>\n";
-    ptr += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-    ptr += "<title>LED Control</title>\n";
-    ptr += "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
-    ptr += "body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
-    ptr += ".button {display: block;width: 80px;background-color: #1abc9c;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
-    ptr += ".button-on {background-color: #1abc9c;}\n";
-    ptr += ".button-on:active {background-color: #16a085;}\n";
-    ptr += ".button-off {background-color: #34495e;}\n";
-    ptr += ".button-off:active {background-color: #2c3e50;}\n";
-    ptr += "p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
-    ptr += "</style>\n";
-    ptr += "</head>\n";
-    ptr += "<body>\n";
-    ptr += "<h1>ESP8266 Web Server</h1>\n";
-    ptr += "<h3>Using Access Point(AP) Mode</h3>\n";
-
-    if (led1stat)
-    {
-        ptr += "<p>LED1 Status: ON</p><a class=\"button button-off\" href=\"/led1off\">OFF</a>\n";
-    }
-    else
-    {
-        ptr += "<p>LED1 Status: OFF</p><a class=\"button button-on\" href=\"/led1on\">ON</a>\n";
-    }
-
-    if (led2stat)
-    {
-        ptr += "<p>LED2 Status: ON</p><a class=\"button button-off\" href=\"/led2off\">OFF</a>\n";
-    }
-    else
-    {
-        ptr += "<p>LED2 Status: OFF</p><a class=\"button button-on\" href=\"/led2on\">ON</a>\n";
-    }
-
-    ptr += "</body>\n";
-    ptr += "</html>\n";
-    return ptr;
-}
-
-void handle_http_on_connect()
-{
-    Serial.println("GPIO7 Status: OFF | GPIO6 Status: OFF");
-    server.send(200, "text/html", send_http_html_response(1, 1));
-}
-
-void handle_http_not_found()
-{
-    server.send(404, "text/plain", "Not found");
 }
 
 float read_cell_voltage()
