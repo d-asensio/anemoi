@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "anemoi",
+			"path": ".."
+		},
+		{
+			"name": "bin",
+			"path": "../bin"
+		},
+		{
+			"name": "embedded",
+			"path": "../embedded"
+		},
+		{
+			"name": "web-app",
+			"path": "../web-app"
+		}
+	],
+	"settings": {}
+}
