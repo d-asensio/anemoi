@@ -2,6 +2,7 @@
 
 #include <Wire.h>
 #include <LittleFS.h>
+#include <Arduino_JSON.h>
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
@@ -26,6 +27,12 @@ const char *ssid = WIFI_SSID;
 const char *password = WIFI_PASSWORD;
 
 AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+JSONVar readings;
+
+unsigned long last_time = 0;
+unsigned long timer_delay = 100;
 
 int button_state = LOW;
 int previous_button_state = LOW;
@@ -46,6 +53,12 @@ void init_button_switch();
 void init_i2c_ads();
 void init_buzzer();
 
+String get_sensors_json();
+void init_websocket();
+void notify_ws_clients(String sensor_readings);
+void handle_ws_message(void *arg, uint8_t *data, size_t len);
+void on_ws_event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+
 float read_cell_voltage();
 float read_atmospheric_pressure_bars();
 float get_O2_partial_pressure_from_voltage(float current_cell_voltage);
@@ -65,6 +78,7 @@ void setup()
 
     init_filesystem();
     init_wifi_connection();
+    init_websocket();
     init_http_server();
 
     calibrate_cell();
@@ -93,14 +107,6 @@ void loop()
     float cell_voltage = read_cell_voltage();
     float ppO2 = get_O2_partial_pressure_from_voltage(cell_voltage);
 
-    Serial.print("Voltage: ");
-    Serial.print(cell_voltage);
-    Serial.println(" mV");
-
-    Serial.print("ppO2: ");
-    Serial.print(ppO2);
-    Serial.println(" ppO2");
-
     display.setTextSize(2);
 
     display.clearDisplay();
@@ -117,34 +123,20 @@ void loop()
     display.println(" bar");
     display.display();
 
-    //////
-
-    if (bmp.takeForcedMeasurement())
+    if (!bmp.takeForcedMeasurement())
     {
-        float atmospheric_pressure_pascals = bmp.readPressure();
-
-        Serial.print(F("Temperature: "));
-        Serial.print(bmp.readTemperature());
-        Serial.println(" *C");
-
-        Serial.print(F("Pressure: "));
-        Serial.print(atmospheric_pressure_pascals);
-        Serial.println(" Pa");
-
-        Serial.print(F("Pressure: "));
-        Serial.print(atmospheric_pressure_bars);
-        Serial.println(" bar");
-
-        Serial.print(F("Approx altitude: "));
-        Serial.print(bmp.readAltitude(1013.25));
-        Serial.println(" m");
-
-        Serial.println();
+        Serial.println("BMP reading measurement failed!");
     }
-    else
+
+    if ((millis() - last_time) > timer_delay)
     {
-        Serial.println("Forced measurement failed!");
+        String sensor_readings = get_sensors_json();
+        notify_ws_clients(sensor_readings);
+
+        last_time = millis();
     }
+
+    ws.cleanupClients();
 }
 
 void init_i2c_bpm()
@@ -184,14 +176,19 @@ void init_wifi_connection()
 
 void init_http_server()
 {
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(LittleFS, "/index.html", "text/html");
-    });
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(LittleFS, "/index.html", "text/html"); });
 
     server.serveStatic("/", LittleFS, "/");
 
     server.begin();
     Serial.println("HTTP server started");
+}
+
+void init_websocket()
+{
+    ws.onEvent(on_ws_event);
+    server.addHandler(&ws);
 }
 
 void init_button_switch()
@@ -235,12 +232,67 @@ void init_i2c_display()
     }
 }
 
+void notify_ws_clients(String sensor_readings)
+{
+    ws.textAll(sensor_readings);
+}
+
 float read_cell_voltage()
 {
     float multiplier = 0.1875F;
     float adc_reading = ads.readADC_Differential_0_1();
 
     return adc_reading * multiplier;
+}
+
+String get_sensors_json()
+{
+    float cell_voltage = read_cell_voltage();
+    float ppO2 = get_O2_partial_pressure_from_voltage(cell_voltage);
+    float atmospheric_pressure_pascals = bmp.readPressure();
+
+    readings["cellVoltage"] = String(cell_voltage);
+    readings["ppO2"] = String(ppO2);
+    readings["temperature"] = String(bmp.readTemperature());
+    readings["athmosphericPressure"] = String(atmospheric_pressure_pascals);
+    readings["altitude"] = String(bmp.readAltitude(1013.25));
+    String jsonString = JSON.stringify(readings);
+    return jsonString;
+}
+
+void handle_ws_message(void *arg, uint8_t *data, size_t len)
+{
+    AwsFrameInfo *info = (AwsFrameInfo *)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+    {
+        String message = (char *)data;
+
+        Serial.print("[WS] message received: ");
+        Serial.print(message);
+
+        String sensor_readings = get_sensors_json();
+        Serial.print(sensor_readings);
+        notify_ws_clients(sensor_readings);
+    }
+}
+
+void on_ws_event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+    switch (type)
+    {
+    case WS_EVT_CONNECT:
+        Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+        break;
+    case WS_EVT_DISCONNECT:
+        Serial.printf("WebSocket client #%u disconnected\n", client->id());
+        break;
+    case WS_EVT_DATA:
+        handle_ws_message(arg, data, len);
+        break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+        break;
+    }
 }
 
 float read_atmospheric_pressure_bars()
