@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <LittleFS.h>
 #include <Arduino_JSON.h>
+#include <qrcode.h>
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
@@ -22,6 +23,9 @@
 #define SCREEN_HEIGHT 64
 
 #define ATMOSPHERIC_O2_FRACTION 0.21
+
+const int qr_code_version = 3;
+const int pixel_size = 2;
 
 const char *ssid = WIFI_SSID;
 const char *password = WIFI_PASSWORD;
@@ -52,9 +56,11 @@ void init_http_server();
 void init_button_switch();
 void init_i2c_ads();
 void init_buzzer();
+void init_websocket();
+
+void show_qr_code(String qrCodeString);
 
 String get_sensors_json();
-void init_websocket();
 void notify_ws_clients(String sensor_readings);
 void handle_ws_message(void *arg, uint8_t *data, size_t len);
 void on_ws_event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
@@ -100,6 +106,9 @@ void loop()
         show_calibrting_message();
         delay(1000);
         digitalWrite(BUTTON_LED_PIN, HIGH);
+
+        show_qr_code("http://" + WiFi.localIP().toString() + "/");
+        delay(5000);
     }
 
     previous_button_state = button_state;
@@ -230,6 +239,39 @@ void init_i2c_display()
         while (1)
             ;
     }
+}
+
+void show_qr_code(String qrCodeString)
+{
+    QRCode qrcode;
+
+    uint8_t qrcodeBytes[qrcode_getBufferSize(qr_code_version)];
+    qrcode_initText(&qrcode, qrcodeBytes, qr_code_version, ECC_LOW,
+                    qrCodeString.c_str());
+
+    display.clearDisplay();
+
+    int startX = (SCREEN_WIDTH - (qrcode.size * pixel_size) - (pixel_size * 2)) / 2;
+    int startY = (SCREEN_HEIGHT - (qrcode.size * pixel_size) - (pixel_size * 2)) / 2;
+
+    int qrCodeSize = qrcode.size;
+
+    display.fillRect(startX, startY, (qrCodeSize * pixel_size) + (pixel_size * 2),
+                     (qrCodeSize * pixel_size) + (pixel_size * 2), WHITE);
+
+    for (uint8_t y = 0; y < qrCodeSize; y++)
+    {
+        for (uint8_t x = 0; x < qrCodeSize; x++)
+        {
+            if (qrcode_getModule(&qrcode, x, y))
+            {
+                display.fillRect(x * pixel_size + startX + pixel_size,
+                                 y * pixel_size + startY + pixel_size, pixel_size,
+                                 pixel_size, BLACK);
+            }
+        }
+    }
+    display.display();
 }
 
 void notify_ws_clients(String sensor_readings)

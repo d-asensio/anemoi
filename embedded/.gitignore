@@ -3,5 +3,8 @@
 .idea/
 .vscode/
 
+# os
+.DS_Store
+
 ## Credentials config file
 private_credentials.ini
