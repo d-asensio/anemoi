@@ -23,7 +23,7 @@ export const SensorChart = ({
 }: SensorChartProps) => {
   const [data, setData] = useState<{ x: Date; y: number }[]>([]);
 
-  const { lastMessage } = useWebSocket("ws://192.168.1.154/ws");
+  const { lastMessage } = useWebSocket("ws://192.168.1.134/ws");
 
   useEffect(() => {
     if (lastMessage !== null) {
