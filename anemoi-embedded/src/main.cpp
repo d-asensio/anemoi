@@ -20,9 +20,9 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-#define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"// UART service UUID
-#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define SERVICE_UUID "9243e98a-314c-42b2-a4fc-c23d54f0f271"// UART service UUID
+#define CHARACTERISTIC_UUID_RX "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
+#define CHARACTERISTIC_UUID_TX "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
 
 #define ATMOSPHERIC_O2_FRACTION 0.21
 
@@ -39,9 +39,6 @@ Adafruit_BMP280 bmp;
 
 float atmosphericCellVoltage = 0;
 float atmosphericPressureBars = 0;
-
-unsigned long lastTime = 0;
-unsigned long timerDelay = 300;
 
 BLEServer *pServer = nullptr;
 BLECharacteristic *pTxCharacteristic;
@@ -81,7 +78,8 @@ void initI2CRTC() {
     while (true) continue;
   }
 
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  // Uncomment to set date (comment again)
+  // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 }
 
 void initButtonSwitch() {
@@ -183,8 +181,9 @@ void showCalibratingMessage() {
   display.display();
 }
 
-void initBLEConnection() {// Create the BLE Device
-  BLEDevice::init("Anemoi Analyzer");
+// Create the BLE Device
+void initBLEConnection() {
+  BLEDevice::init("Anemoi Analyzer v0.0.1");
 
   // Create the BLE Server
   pServer = BLEDevice::createServer();
@@ -211,7 +210,7 @@ void initBLEConnection() {// Create the BLE Device
 
   // Start advertising
   pServer->getAdvertising()->start();
-  Serial.println("Waiting a client connection to notify...");
+  Serial.println("Start BLE advertising");
 }
 
 void setup() {
@@ -235,22 +234,46 @@ void loop() {
   float ppO2 = getO2PartialPressureFromVoltage(cellVoltage);
 
   if (deviceConnected) {
-    pTxCharacteristic->setValue(ppO2);
+    DateTime now = rtc.now();
+
+    Serial.print("RTC Date Time: ");
+    Serial.print(now.year(), DEC);
+    Serial.print('/');
+    Serial.print(now.month(), DEC);
+    Serial.print('/');
+    Serial.print(now.day(), DEC);
+    Serial.print(' ');
+    Serial.print('-');
+    Serial.print(' ');
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.print(':');
+    Serial.println(now.second(), DEC);
+
+    char ppO2Temp[50];
+    dtostrf(ppO2, 6, 2, ppO2Temp);
+    pTxCharacteristic->setValue(ppO2Temp);
     pTxCharacteristic->notify();
-    delay(10);// bluetooth stack will go into congestion, if too many packets are sent
+    // Bluetooth stack will go into congestion, if too many packets are sent
+    delay(10);
   }
 
-  // disconnecting
+  // Disconnecting
   if (!deviceConnected && oldDeviceConnected) {
-    delay(500);                 // give the bluetooth stack the chance to get things ready
-    pServer->startAdvertising();// restart advertising
-    Serial.println("start advertising");
+    // Give the bluetooth stack the chance to get things ready
+    delay(500);
+
+    // Restart advertising
+    pServer->startAdvertising();
     oldDeviceConnected = deviceConnected;
+
+    Serial.println("-- Client disconnected! --");
   }
 
-  // connecting
+  // Connecting
   if (deviceConnected && !oldDeviceConnected) {
-    // do stuff here on connecting
+    Serial.println("-- Client connected --");
     oldDeviceConnected = deviceConnected;
   }
 
@@ -292,26 +315,5 @@ void loop() {
 
   if (!bmp.takeForcedMeasurement()) {
     Serial.println("BMP reading measurement failed!");
-  }
-
-  if ((millis() - lastTime) > timerDelay) {
-    DateTime now = rtc.now();
-
-    Serial.print("RTC Date Time: ");
-    Serial.print(now.year(), DEC);
-    Serial.print('/');
-    Serial.print(now.month(), DEC);
-    Serial.print('/');
-    Serial.print(now.day(), DEC);
-    Serial.print(' ');
-    Serial.print('-');
-    Serial.print(' ');
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.print(':');
-    Serial.println(now.second(), DEC);
-
-    lastTime = millis();
   }
 }
