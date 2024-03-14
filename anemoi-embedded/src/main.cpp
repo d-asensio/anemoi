@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <qrcode.h>
 
 #include <RTClib.h>
 
@@ -12,22 +11,16 @@
 #include <Adafruit_BMP280.h>
 #include <Adafruit_SSD1306.h>
 
-#define BUTTON_SWITCH_PIN 14
-#define BUTTON_LED_PIN 33
-
 #define BUZZER_PIN 32
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-#define SERVICE_UUID "9243e98a-314c-42b2-a4fc-c23d54f0f271"// UART service UUID
+#define SERVICE_UUID "9243e98a-314c-42b2-a4fc-c23d54f0f271"
 #define CHARACTERISTIC_UUID_RX "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
 #define CHARACTERISTIC_UUID_TX "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
 
 #define ATMOSPHERIC_O2_FRACTION 0.21
-
-int buttonState = LOW;
-int previousButtonState = LOW;
 
 const uint8_t qrCodeVersion = 3;
 const uint8_t pixelSize = 2;
@@ -82,12 +75,6 @@ void initI2CRTC() {
   // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 }
 
-void initButtonSwitch() {
-  pinMode(BUTTON_SWITCH_PIN, INPUT);
-  pinMode(BUTTON_LED_PIN, OUTPUT);
-  digitalWrite(BUTTON_LED_PIN, HIGH);
-}
-
 void initBuzzer() {
   pinMode(BUZZER_PIN, OUTPUT);
 }
@@ -118,34 +105,6 @@ void initI2CDisplay() {
     Serial.println(F("SSD1306 allocation failed"));
     while (true) continue;
   }
-}
-
-void showQrCode(const String &qrCodeString) {
-  QRCode qrcode;
-
-  uint8_t qrcodeBytes[qrcode_getBufferSize(qrCodeVersion)];
-  qrcode_initText(&qrcode, qrcodeBytes, qrCodeVersion, ECC_LOW, qrCodeString.c_str());
-
-  display.clearDisplay();
-
-  uint8_t startX = (SCREEN_WIDTH - (qrcode.size * pixelSize) - (pixelSize * 2)) / 2;
-  uint8_t startY = (SCREEN_HEIGHT - (qrcode.size * pixelSize) - (pixelSize * 2)) / 2;
-
-  uint8_t qrCodeSize = qrcode.size;
-
-  display.fillRect(startX, startY, qrCodeSize * pixelSize + (pixelSize * 2),
-                   qrCodeSize * pixelSize + (pixelSize * 2), WHITE);
-
-  for (uint8_t y = 0; y < qrCodeSize; y++) {
-    for (uint8_t x = 0; x < qrCodeSize; x++) {
-      if (qrcode_getModule(&qrcode, x, y)) {
-        display.fillRect(x * pixelSize + startX + pixelSize,
-                         y * pixelSize + startY + pixelSize, pixelSize,
-                         pixelSize, BLACK);
-      }
-    }
-  }
-  display.display();
 }
 
 float readO2SensorVoltage() {
@@ -181,9 +140,8 @@ void showCalibratingMessage() {
   display.display();
 }
 
-// Create the BLE Device
 void initBLEConnection() {
-  BLEDevice::init("Anemoi Analyzer v0.0.1");
+  BLEDevice::init("Anemoi Analyzer Nano");
 
   // Create the BLE Server
   pServer = BLEDevice::createServer();
@@ -217,7 +175,6 @@ void setup() {
   Serial.begin(115200);
   initBLEConnection();
 
-  initButtonSwitch();
   initBuzzer();
 
   initI2CRTC();
@@ -230,8 +187,8 @@ void setup() {
 }
 
 void loop() {
-  float cellVoltage = readO2SensorVoltage();
-  float ppO2 = getO2PartialPressureFromVoltage(cellVoltage);
+  float o2SensorVoltage = readO2SensorVoltage();
+  float ppO2 = getO2PartialPressureFromVoltage(o2SensorVoltage);
 
   if (deviceConnected) {
     DateTime now = rtc.now();
@@ -277,31 +234,11 @@ void loop() {
     oldDeviceConnected = deviceConnected;
   }
 
-
-  buttonState = digitalRead(BUTTON_SWITCH_PIN);
-
-  if (buttonState == HIGH && previousButtonState == LOW) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    digitalWrite(BUTTON_LED_PIN, LOW);
-    delay(100);
-    digitalWrite(BUZZER_PIN, LOW);
-
-    calibrateO2Sensor();
-    showCalibratingMessage();
-    delay(1000);
-    digitalWrite(BUTTON_LED_PIN, HIGH);
-
-    showQrCode("Holi");
-    delay(5000);
-  }
-
-  previousButtonState = buttonState;
-
   display.setTextSize(2);
 
   display.clearDisplay();
   display.setCursor(0, 5);
-  display.print(cellVoltage);
+  display.print(o2SensorVoltage);
   display.println(" mV");
 
   display.setCursor(0, 25);
