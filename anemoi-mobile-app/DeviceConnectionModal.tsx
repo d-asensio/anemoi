@@ -69,7 +69,7 @@ const DeviceModal: FC<DeviceModalProps> = (props) => {
           Tap on a device to connect
         </Text>
         <FlatList
-          contentContainerStyle={modalStyle.modalFlatlistContiner}
+          contentContainerStyle={modalStyle.modalFlatListContainer}
           data={devices}
           renderItem={renderDeviceModalListItem}
         />
@@ -83,13 +83,13 @@ const modalStyle = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f2f2f2",
   },
-  modalFlatlistContiner: {
+  modalFlatListContainer: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   modalCellOutline: {
     borderWidth: 1,
-    borderColor: "black",
+    borderColor: "#2d2a32",
     alignItems: "center",
     marginHorizontal: 20,
     paddingVertical: 15,
@@ -101,13 +101,14 @@ const modalStyle = StyleSheet.create({
   },
   modalTitleText: {
     marginTop: 40,
+    marginBottom: 20,
     fontSize: 30,
     fontWeight: "bold",
     marginHorizontal: 20,
     textAlign: "center",
   },
   ctaButton: {
-    backgroundColor: "#FF6060",
+    backgroundColor: "#f9dc5c",
     justifyContent: "center",
     alignItems: "center",
     height: 50,
@@ -118,7 +119,7 @@ const modalStyle = StyleSheet.create({
   ctaButtonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
+    color: "#2d2a32",
   },
 });
 

@@ -17,10 +17,14 @@
 #define SCREEN_HEIGHT 64
 
 #define SERVICE_UUID "9243e98a-314c-42b2-a4fc-c23d54f0f271"
-#define CHARACTERISTIC_UUID_RX "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
-#define CHARACTERISTIC_UUID_TX "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
 
-#define ATMOSPHERIC_O2_FRACTION 0.21
+#define O2_PERCENTAGE_CHARACTERISTIC_UUID "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
+#define ATMOSPHERIC_PRESSURE_CHARACTERISTIC_UUID "68848368-6d91-49f9-9a5f-fed73463c9f6"
+#define TEMPERATURE_PRESSURE_CHARACTERISTIC_UUID "a9bac333-e37c-42a9-8abc-9b07350e189d"
+#define CALIBRATE_SIGNAL_CHARACTERISTIC_UUID "8d07c070-b5e0-4859-bc71-88b425e040c0"
+
+#define ATMOSPHERIC_O2_FRACTION_AT_SEA_LEVEL 0.209
+#define ATMOSPHERIC_PRESSURE_AT_SEA_LEVEL 1013.25 // in millibars
 
 const uint8_t qrCodeVersion = 3;
 const uint8_t pixelSize = 2;
@@ -31,38 +35,18 @@ Adafruit_ADS1115 ads;
 Adafruit_BMP280 bmp;
 
 float atmosphericCellVoltage = 0;
-float atmosphericPressureBars = 0;
+float atmosphericPressure = 0;
 
 BLEServer *pServer = nullptr;
-BLECharacteristic *pTxCharacteristic;
+BLECharacteristic *percentageO2Characteristic;
+BLECharacteristic *atmosphericPresureO2Characteristic;
+BLECharacteristic *temperatureCharacteristic;
+BLECharacteristic *callibrateSignalCharacteristic;
+
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
-class AnemoiBLEServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer *bleServer) override {
-    deviceConnected = true;
-  };
-
-  void onDisconnect(BLEServer *bleServer) override {
-    deviceConnected = false;
-  }
-};
-
-class AnemoiBLECharacteristicCallbacks : public BLECharacteristicCallbacks {
-  void onWrite(BLECharacteristic *pCharacteristic) override {
-    std::string rxValue = pCharacteristic->getValue();
-
-    if (!rxValue.empty()) {
-      Serial.println("*********");
-      Serial.print("Received Value: ");
-      for (int i = 0; i < rxValue.length(); i++)
-        Serial.print(rxValue[i]);
-
-      Serial.println();
-      Serial.println("*********");
-    }
-  }
-};
+bool callibrateSignalReceived = false;
 
 void initI2CRTC() {
   if (!rtc.begin()) {
@@ -114,10 +98,12 @@ float readO2SensorVoltage() {
   return adc_reading * multiplier;
 }
 
-float readAtmosphericPressureBars() {
-  float atmospheric_pressure_pascals = bmp.readPressure();
+float readAtmosphericPressure() {
+  return bmp.readPressure() / 100;// in millibars
+}
 
-  return atmospheric_pressure_pascals / 100000;
+float readTemperature() {
+  return bmp.readTemperature();
 }
 
 float getO2PartialPressureFromVoltage(float currentCellVoltage) {
@@ -126,7 +112,7 @@ float getO2PartialPressureFromVoltage(float currentCellVoltage) {
 
 void calibrateO2Sensor() {
   atmosphericCellVoltage = readO2SensorVoltage();
-  atmosphericPressureBars = readAtmosphericPressureBars();
+  atmosphericPressure = readAtmosphericPressure();
 }
 
 void showCalibratingMessage() {
@@ -140,34 +126,73 @@ void showCalibratingMessage() {
   display.display();
 }
 
+void buzzerBeep() {
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(100);
+  digitalWrite(BUZZER_PIN, LOW);
+}
+
+class AnemoiBLEServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *bleServer) override {
+    deviceConnected = true;
+  };
+
+  void onDisconnect(BLEServer *bleServer) override {
+    deviceConnected = false;
+  }
+};
+
+class AnemoiBLECharacteristicCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) override {
+    std::string rxValue = pCharacteristic->getValue();
+
+    if (!rxValue.empty()) {
+      Serial.println("*********");
+      Serial.print("Received Value: ");
+      for (int i = 0; i < rxValue.length(); i++)
+        Serial.print(rxValue[i]);
+
+      Serial.println();
+      Serial.println("*********");
+
+      callibrateSignalReceived = true;
+    }
+  }
+};
+
 void initBLEConnection() {
   BLEDevice::init("Anemoi Analyzer Nano");
 
-  // Create the BLE Server
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new AnemoiBLEServerCallbacks());
 
-  // Create the BLE Service
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  // Create a BLE Characteristic
-  pTxCharacteristic = pService->createCharacteristic(
-          CHARACTERISTIC_UUID_TX,
+  percentageO2Characteristic = pService->createCharacteristic(
+          O2_PERCENTAGE_CHARACTERISTIC_UUID,
           BLECharacteristic::PROPERTY_NOTIFY);
+  percentageO2Characteristic->addDescriptor(new BLE2902());
 
-  pTxCharacteristic->addDescriptor(new BLE2902());
+  atmosphericPresureO2Characteristic = pService->createCharacteristic(
+          ATMOSPHERIC_PRESSURE_CHARACTERISTIC_UUID,
+          BLECharacteristic::PROPERTY_NOTIFY);
+  atmosphericPresureO2Characteristic->addDescriptor(new BLE2902());
 
-  BLECharacteristic *pRxCharacteristic = pService->createCharacteristic(
-          CHARACTERISTIC_UUID_RX,
+  temperatureCharacteristic = pService->createCharacteristic(
+          TEMPERATURE_PRESSURE_CHARACTERISTIC_UUID,
+          BLECharacteristic::PROPERTY_NOTIFY);
+  temperatureCharacteristic->addDescriptor(new BLE2902());
+
+  callibrateSignalCharacteristic = pService->createCharacteristic(
+          CALIBRATE_SIGNAL_CHARACTERISTIC_UUID,
           BLECharacteristic::PROPERTY_WRITE);
 
-  pRxCharacteristic->setCallbacks(new AnemoiBLECharacteristicCallbacks());
+  callibrateSignalCharacteristic->setCallbacks(new AnemoiBLECharacteristicCallbacks());
 
-  // Start the service
   pService->start();
 
-  // Start advertising
   pServer->getAdvertising()->start();
+
   Serial.println("Start BLE advertising");
 }
 
@@ -189,6 +214,34 @@ void setup() {
 void loop() {
   float o2SensorVoltage = readO2SensorVoltage();
   float ppO2 = getO2PartialPressureFromVoltage(o2SensorVoltage);
+  float percentageO2 = ppO2 * 100;
+
+  float temperature = readTemperature();
+
+  display.clearDisplay();
+
+  display.setTextSize(2);
+  display.setCursor(0, 5);
+  display.print("O2");
+
+  display.setCursor(42, 5);
+  display.print(o2SensorVoltage);
+  display.print("mV");
+
+  display.setTextSize(4);
+  display.setCursor(0, 30);
+  display.print(String(percentageO2, 1));
+  display.println("%");
+  display.display();
+
+  if (callibrateSignalReceived) {
+    buzzerBeep();
+    calibrateO2Sensor();
+    showCalibratingMessage();
+    delay(1000);
+
+    callibrateSignalReceived = false;
+  }
 
   if (deviceConnected) {
     DateTime now = rtc.now();
@@ -208,12 +261,25 @@ void loop() {
     Serial.print(':');
     Serial.println(now.second(), DEC);
 
-    char ppO2Temp[50];
-    dtostrf(ppO2, 6, 2, ppO2Temp);
-    pTxCharacteristic->setValue(ppO2Temp);
-    pTxCharacteristic->notify();
-    // Bluetooth stack will go into congestion, if too many packets are sent
-    delay(10);
+    // Send atmospheticPressure data
+    char atmosphericPressureTmp[50];
+    dtostrf(atmosphericPressure, 6, 2, atmosphericPressureTmp);
+    atmosphericPresureO2Characteristic->setValue(atmosphericPressureTmp);
+    atmosphericPresureO2Characteristic->notify();
+
+    // Send temperature data
+    char temperatureTmp[50];
+    dtostrf(temperature, 6, 2, temperatureTmp);
+    temperatureCharacteristic->setValue(temperatureTmp);
+    temperatureCharacteristic->notify();
+
+    // Send O2 percentage data
+    char percentageO2Tmp[50];
+    dtostrf(percentageO2, 6, 2, percentageO2Tmp);
+    percentageO2Characteristic->setValue(percentageO2Tmp);
+    percentageO2Characteristic->notify();
+
+    delay(10);// Avoid BLE data congestion
   }
 
   // Disconnecting
@@ -233,22 +299,6 @@ void loop() {
     Serial.println("-- Client connected --");
     oldDeviceConnected = deviceConnected;
   }
-
-  display.setTextSize(2);
-
-  display.clearDisplay();
-  display.setCursor(0, 5);
-  display.print(o2SensorVoltage);
-  display.println(" mV");
-
-  display.setCursor(0, 25);
-  display.print(ppO2);
-  display.println(" ppO2");
-
-  display.setCursor(0, 45);
-  display.print(atmosphericPressureBars);
-  display.println(" bar");
-  display.display();
 
   if (!bmp.takeForcedMeasurement()) {
     Serial.println("BMP reading measurement failed!");

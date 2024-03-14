@@ -1,83 +1,34 @@
 /* eslint-disable no-bitwise */
 import {useMemo, useState} from "react";
-import {PermissionsAndroid, Platform} from "react-native";
 import {BleError, BleManager, Characteristic, Device,} from "react-native-ble-plx";
-
-import * as ExpoDevice from "expo-device";
 
 import base64 from "react-native-base64";
 
-const HEART_RATE_UUID = "9243e98a-314c-42b2-a4fc-c23d54f0f271";
-const HEART_RATE_CHARACTERISTIC = "44aa55a3-564f-4d9a-b20e-6636e0c43dfc";
+const ANEMOI_SERVICE_UUID = "9243e98a-314c-42b2-a4fc-c23d54f0f271";
+const O2_PERCENTAGE_CHARACTERISTIC_UUID = "44aa55a3-564f-4d9a-b20e-6636e0c43dfc";
+const ATMOSPHERIC_PRESSURE_CHARACTERISTIC_UUID = "68848368-6d91-49f9-9a5f-fed73463c9f6";
+const TEMPERATURE_CHARACTERISTIC_UUID = "a9bac333-e37c-42a9-8abc-9b07350e189d";
+const CALIBRATE_CHARACTERISTIC_UUID = "8d07c070-b5e0-4859-bc71-88b425e040c0"
 
 interface BluetoothLowEnergyApi {
-  requestPermissions(): Promise<boolean>;
   scanForPeripherals(): void;
   connectToDevice: (deviceId: Device) => Promise<void>;
+  sendCalibrateSignal: () => Promise<void>;
   disconnectFromDevice: () => void;
   connectedDevice: Device | null;
   allDevices: Device[];
-  heartRate: number;
+  percentageO2: number;
+  atmosphericPressure: number;
+  temperature: number;
 }
 
 function useBLE(): BluetoothLowEnergyApi {
   const bleManager = useMemo(() => new BleManager(), []);
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
-  const [heartRate, setHeartRate] = useState<number>(0);
-
-  const requestAndroid31Permissions = async () => {
-    const bluetoothScanPermission = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-      {
-        title: "Location Permission",
-        message: "Bluetooth Low Energy requires Location",
-        buttonPositive: "OK",
-      }
-    );
-    const bluetoothConnectPermission = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      {
-        title: "Location Permission",
-        message: "Bluetooth Low Energy requires Location",
-        buttonPositive: "OK",
-      }
-    );
-    const fineLocationPermission = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      {
-        title: "Location Permission",
-        message: "Bluetooth Low Energy requires Location",
-        buttonPositive: "OK",
-      }
-    );
-
-    return (
-      bluetoothScanPermission === "granted" &&
-      bluetoothConnectPermission === "granted" &&
-      fineLocationPermission === "granted"
-    );
-  };
-
-  const requestPermissions = async () => {
-    if (Platform.OS === "android") {
-      if ((ExpoDevice.platformApiLevel ?? -1) < 31) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: "Location Permission",
-            message: "Bluetooth Low Energy requires Location",
-            buttonPositive: "OK",
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } else {
-        return await requestAndroid31Permissions();
-      }
-    } else {
-      return true;
-    }
-  };
+  const [percentageO2, setPercentageO2] = useState<number>(0);
+  const [atmosphericPressure, setAtmosphericPressure] = useState<number>(0);
+  const [temperature, setTemperature] = useState<number>(0);
 
   const isDuplicateDevice = (devices: Device[], nextDevice: Device) =>
     devices.findIndex((device) => nextDevice.id === device.id) > -1;
@@ -118,11 +69,14 @@ function useBLE(): BluetoothLowEnergyApi {
       }
 
       setConnectedDevice(null);
-      setHeartRate(0);
+
+      setPercentageO2(0);
+      setAtmosphericPressure(0);
+      setTemperature(0);
     }
   };
 
-  const onHeartRateUpdate = (
+  const createCharacteristicHandler = (handlerFn: (decodedData: string) => void) => (
     error: BleError | null,
     characteristic: Characteristic | null
   ) => {
@@ -136,29 +90,69 @@ function useBLE(): BluetoothLowEnergyApi {
 
     const rawData = base64.decode(characteristic.value).trim();
 
-    setHeartRate(parseFloat(rawData));
+    handlerFn(rawData)
+  };
+
+  const sendCalibrateSignal = async () => {
+    if (!connectedDevice) {
+      console.log("No Device Connected (sending calibrate signal)");
+      return;
+    }
+
+    await connectedDevice.writeCharacteristicWithResponseForService(
+      ANEMOI_SERVICE_UUID,
+      CALIBRATE_CHARACTERISTIC_UUID,
+      base64.encode("CAL")
+    )
+  }
+
+  const onPercentageO2Update = (decodedData: string) => {
+    setPercentageO2(parseFloat(decodedData));
+  };
+
+  const onAtmosphericPressureUpdate = (decodedData: string) => {
+    setAtmosphericPressure(parseFloat(decodedData));
+  };
+
+  const onTemperatureUpdate = (decodedData: string) => {
+    setTemperature(parseFloat(decodedData));
   };
 
   const startStreamingData = async (device: Device) => {
-    if (device) {
-      device.monitorCharacteristicForService(
-        HEART_RATE_UUID,
-        HEART_RATE_CHARACTERISTIC,
-        onHeartRateUpdate
-      );
-    } else {
-      console.log("No Device Connected");
+    if (!device) {
+      console.log("No Device Connected (starting data stream)");
+      return;
     }
+
+    device.monitorCharacteristicForService(
+      ANEMOI_SERVICE_UUID,
+      O2_PERCENTAGE_CHARACTERISTIC_UUID,
+      createCharacteristicHandler(onPercentageO2Update)
+    );
+
+    device.monitorCharacteristicForService(
+      ANEMOI_SERVICE_UUID,
+      ATMOSPHERIC_PRESSURE_CHARACTERISTIC_UUID,
+      createCharacteristicHandler(onAtmosphericPressureUpdate)
+    );
+
+    device.monitorCharacteristicForService(
+      ANEMOI_SERVICE_UUID,
+      TEMPERATURE_CHARACTERISTIC_UUID,
+      createCharacteristicHandler(onTemperatureUpdate)
+    );
   };
 
   return {
     scanForPeripherals,
-    requestPermissions,
     connectToDevice,
     allDevices,
     connectedDevice,
     disconnectFromDevice,
-    heartRate,
+    sendCalibrateSignal,
+    percentageO2,
+    atmosphericPressure,
+    temperature
   };
 }
 

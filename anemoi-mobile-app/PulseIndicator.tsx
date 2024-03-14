@@ -13,7 +13,6 @@ import { View } from "react-native";
 export const PulseIndicator = () => {
   const clock1 = useClockValue();
   const expo = useImage(require("./img/expo.png"));
-  const heart = useImage(require("./img/heart.png"));
 
   const interval = 1250;
 
@@ -33,15 +32,15 @@ export const PulseIndicator = () => {
     return 0.9 - ((clock1.current + 400) % interval) / interval;
   }, [clock1]);
 
-  if (!expo || !heart) {
+  if (!expo) {
     return <View />;
   }
 
   return (
     <Canvas style={{ height: 300, width: 300 }}>
-      <Circle cx={150} cy={150} r={50} opacity={1} color="#FF6060"></Circle>
-      <Circle cx={150} cy={150} r={scale} opacity={opacity} color="#FF6060" />
-      <Circle cx={150} cy={150} r={scale2} opacity={opacity2} color="#FF6060" />
+      <Circle cx={150} cy={150} r={50} opacity={1} color="#f9dc5c"></Circle>
+      <Circle cx={150} cy={150} r={scale} opacity={opacity} color="#f9dc5c" />
+      <Circle cx={150} cy={150} r={scale2} opacity={opacity2} color="#f9dc5c" />
       <Image
         image={expo}
         fit="contain"

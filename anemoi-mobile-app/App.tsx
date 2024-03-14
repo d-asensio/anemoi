@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {useState} from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -7,52 +7,65 @@ import {
   View,
 } from "react-native";
 import DeviceModal from "./DeviceConnectionModal";
-import { PulseIndicator } from "./PulseIndicator";
+import {PulseIndicator} from "./PulseIndicator";
 import useBLE from "./useBLE";
 
 const App = () => {
   const {
-    requestPermissions,
     scanForPeripherals,
-    allDevices,
     connectToDevice,
-    connectedDevice,
-    heartRate,
     disconnectFromDevice,
+    allDevices,
+    connectedDevice,
+    sendCalibrateSignal,
+    percentageO2,
+    atmosphericPressure,
+    temperature
   } = useBLE();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
-
-  const scanForDevices = async () => {
-    const isPermissionsEnabled = await requestPermissions();
-    if (isPermissionsEnabled) {
-      scanForPeripherals();
-    }
-  };
 
   const hideModal = () => {
     setIsModalVisible(false);
   };
 
   const openModal = async () => {
-    await scanForDevices();
+    scanForPeripherals();
     setIsModalVisible(true);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.heartRateTitleWrapper}>
-        {connectedDevice ? (
-          <>
-            <PulseIndicator />
-            <Text style={styles.heartRateTitleText}>The gas mix has:</Text>
-            <Text style={styles.heartRateText}>{heartRate} ppO2</Text>
-          </>
-        ) : (
-          <Text style={styles.heartRateTitleText}>
-            Please Connect to Anemoi Analyzer
+      {connectedDevice ? (
+        <View style={styles.dataView}>
+          <PulseIndicator/>
+          <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{percentageO2}</Text>
+            <Text style={styles.dataPointUnits}>% O2</Text>
+          </View>
+          <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{atmosphericPressure}</Text>
+            <Text style={styles.dataPointUnits}>mbar</Text>
+          </View>
+          <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{temperature}</Text>
+            <Text style={styles.dataPointUnits}>℃</Text>
+          </View>
+          <TouchableOpacity
+            onPress={sendCalibrateSignal}
+            style={styles.calibrateButton}
+          >
+            <Text style={styles.calibrateButtonText}>
+              Calibrate
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.noConnectedDevicesView}>
+          <Text style={styles.noConnectedDevicesText}>
+            Please connect to the analyzer to see its data
           </Text>
-        )}
-      </View>
+        </View>
+      )}
       <TouchableOpacity
         onPress={connectedDevice ? disconnectFromDevice : openModal}
         style={styles.ctaButton}
@@ -76,24 +89,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f2f2f2",
   },
-  heartRateTitleWrapper: {
+  dataView: {
+    flex: 1,
+    justifyContent: "flex-start",
+    alignItems: "center"
+  },
+  dataPointView: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    color: "#2d2a32",
+    marginBottom: 15
+  },
+  dataPointValue: {
+    fontSize: 50,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginHorizontal: 5,
+    color: "#2d2a32",
+  },
+  dataPointUnits: {
+    fontSize: 20
+  },
+  noConnectedDevicesView: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  heartRateTitleText: {
-    fontSize: 30,
-    fontWeight: "bold",
+  noConnectedDevicesText: {
+    fontSize: 20,
     textAlign: "center",
-    marginHorizontal: 20,
-    color: "black",
-  },
-  heartRateText: {
-    fontSize: 25,
-    marginTop: 15,
+    marginHorizontal: 40,
+    color: "#2d2a32",
   },
   ctaButton: {
-    backgroundColor: "#FF6060",
+    backgroundColor: "#f9dc5c",
     justifyContent: "center",
     alignItems: "center",
     height: 50,
@@ -104,7 +133,21 @@ const styles = StyleSheet.create({
   ctaButtonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
+    color: "#2d2a32",
+  },
+  calibrateButton: {
+    borderColor: "#2d2a32",
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    height: 50,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  calibrateButtonText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#2d2a32",
   },
 });
 
