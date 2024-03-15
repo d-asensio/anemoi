@@ -107,7 +107,7 @@ float readTemperature() {
 }
 
 float getO2PartialPressureFromVoltage(float currentCellVoltage) {
-  return ATMOSPHERIC_O2_FRACTION * currentCellVoltage / atmosphericCellVoltage;
+  return ATMOSPHERIC_O2_FRACTION_AT_SEA_LEVEL * currentCellVoltage / atmosphericCellVoltage;
 }
 
 void calibrateO2Sensor() {
@@ -123,6 +123,17 @@ void showCalibratingMessage() {
   display.setCursor(0, 10);
 
   display.println("Calibrating...");
+  display.display();
+}
+
+void showDisplayMessage(String message) {
+  display.clearDisplay();
+
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+
+  display.println(message);
   display.display();
 }
 
@@ -209,6 +220,7 @@ void setup() {
 
   calibrateO2Sensor();
   showCalibratingMessage();
+  buzzerBeep();
 }
 
 void loop() {
@@ -284,6 +296,8 @@ void loop() {
 
   // Disconnecting
   if (!deviceConnected && oldDeviceConnected) {
+    buzzerBeep();
+    showDisplayMessage("Disconnected!");
     // Give the bluetooth stack the chance to get things ready
     delay(500);
 
@@ -298,6 +312,10 @@ void loop() {
   if (deviceConnected && !oldDeviceConnected) {
     Serial.println("-- Client connected --");
     oldDeviceConnected = deviceConnected;
+
+    buzzerBeep();
+    showDisplayMessage("Connected!");
+    delay(500);
   }
 
   if (!bmp.takeForcedMeasurement()) {

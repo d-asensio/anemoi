@@ -10,6 +10,7 @@
     "production": {}
   },
   "cli": {
+    "version": ">=7.5.0",
     "promptToConfigurePushNotifications": false
   }
 }
