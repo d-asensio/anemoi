@@ -34,8 +34,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 Adafruit_ADS1115 ads;
 Adafruit_BMP280 bmp;
 
-float atmosphericCellVoltage = 0;
-float atmosphericPressure = 0;
+float calibrationO2SensorVoltage = 0;
+float calibrationAtmosphericPressure = 0;
 
 BLEServer *pServer = nullptr;
 BLECharacteristic *percentageO2Characteristic;
@@ -107,12 +107,12 @@ float readTemperature() {
 }
 
 float getO2PartialPressureFromVoltage(float currentCellVoltage) {
-  return ATMOSPHERIC_O2_FRACTION_AT_SEA_LEVEL * currentCellVoltage / atmosphericCellVoltage;
+  return ATMOSPHERIC_O2_FRACTION_AT_SEA_LEVEL * currentCellVoltage / calibrationO2SensorVoltage;
 }
 
 void calibrateO2Sensor() {
-  atmosphericCellVoltage = readO2SensorVoltage();
-  atmosphericPressure = readAtmosphericPressure();
+  calibrationO2SensorVoltage = readO2SensorVoltage();
+  calibrationAtmosphericPressure = readAtmosphericPressure();
 }
 
 void showCalibratingMessage() {
@@ -226,6 +226,8 @@ void setup() {
 void loop() {
   float o2SensorVoltage = readO2SensorVoltage();
   float ppO2 = getO2PartialPressureFromVoltage(o2SensorVoltage);
+  float currentAtmosphericPressure = readAtmosphericPressure();
+
   float percentageO2 = ppO2 * 100;
 
   float temperature = readTemperature();
@@ -275,7 +277,7 @@ void loop() {
 
     // Send atmospheticPressure data
     char atmosphericPressureTmp[50];
-    dtostrf(atmosphericPressure, 6, 2, atmosphericPressureTmp);
+    dtostrf(currentAtmosphericPressure, 6, 2, atmosphericPressureTmp);
     atmosphericPresureO2Characteristic->setValue(atmosphericPressureTmp);
     atmosphericPresureO2Characteristic->notify();
 
