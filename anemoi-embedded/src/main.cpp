@@ -23,7 +23,7 @@
 #define TEMPERATURE_PRESSURE_CHARACTERISTIC_UUID "a9bac333-e37c-42a9-8abc-9b07350e189d"
 #define CALIBRATE_SIGNAL_CHARACTERISTIC_UUID "8d07c070-b5e0-4859-bc71-88b425e040c0"
 
-#define ATMOSPHERIC_O2_FRACTION_AT_SEA_LEVEL 0.209
+#define ATMOSPHERIC_O2_PERCENTAGE_AT_SEA_LEVEL 0.209
 #define ATMOSPHERIC_PRESSURE_AT_SEA_LEVEL 1013.25 // in millibars
 
 const uint8_t qrCodeVersion = 3;
@@ -106,8 +106,12 @@ float readTemperature() {
   return bmp.readTemperature();
 }
 
-float getO2PartialPressureFromVoltage(float currentCellVoltage) {
-  return ATMOSPHERIC_O2_FRACTION_AT_SEA_LEVEL * currentCellVoltage / calibrationO2SensorVoltage;
+float getAtmosphericO2Percentage(float currentAtmosphericPressure) {
+  return (ATMOSPHERIC_O2_PERCENTAGE_AT_SEA_LEVEL * currentAtmosphericPressure) / ATMOSPHERIC_PRESSURE_AT_SEA_LEVEL;
+}
+
+float getO2FractionFromVoltage(float currentCellVoltage, float atmosphericO2Percentage) {
+  return atmosphericO2Percentage * currentCellVoltage / calibrationO2SensorVoltage;
 }
 
 void calibrateO2Sensor() {
@@ -225,10 +229,11 @@ void setup() {
 
 void loop() {
   float o2SensorVoltage = readO2SensorVoltage();
-  float ppO2 = getO2PartialPressureFromVoltage(o2SensorVoltage);
   float currentAtmosphericPressure = readAtmosphericPressure();
+  float atmosphericO2Percentage = getAtmosphericO2Percentage(currentAtmosphericPressure);
+  float fractionO2 = getO2FractionFromVoltage(o2SensorVoltage, atmosphericO2Percentage);
 
-  float percentageO2 = ppO2 * 100;
+  float percentageO2 = fractionO2 * 100;
 
   float temperature = readTemperature();
 
