@@ -10,15 +10,7 @@
 #include <BuzzerModule.h>
 #include <DateTimeModule.h>
 
-#include <Adafruit_ADS1X15.h>
-#include <Adafruit_BMP280.h>
-
-#include "AtmosphericPressureSensor.h"
-#include "HeVoltageSensor.h"
 #include "ISensor.h"
-#include "O2VoltageSensor.h"
-#include "RandomDataSensor.h"
-#include "TemperatureSensor.h"
 
 #include "Display.h"
 
@@ -32,15 +24,26 @@
 
 ///
 logging::Logger logger;
-Adafruit_ADS1115 ads;
-Adafruit_BMP280 bmp;
 
 #if DUMMY_BOARD_MODE == 1
+#include "RandomDataSensor.h"
+
 ISensor *heVoltageSensor = new RandomDataSensor(0, 2);
 ISensor *o2VoltageSensor = new RandomDataSensor(9, 11);
 ISensor *atmosphericPressureSensor = new RandomDataSensor(1013, 1024);
 ISensor *temperatureSensor = new RandomDataSensor(19, 22);
 #else
+#include <Adafruit_ADS1X15.h>
+#include <Adafruit_BMP280.h>
+
+#include "O2VoltageSensor.h"
+#include "HeVoltageSensor.h"
+#include "AtmosphericPressureSensor.h"
+#include "TemperatureSensor.h"
+
+Adafruit_ADS1115 ads;
+Adafruit_BMP280 bmp;
+
 ISensor *heVoltageSensor = new HeVoltageSensor(&logger, &ads);
 ISensor *o2VoltageSensor = new O2VoltageSensor(&logger, &ads);
 ISensor *atmosphericPressureSensor = new AtmosphericPressureSensor(&logger, &bmp);
