@@ -28,10 +28,10 @@ logging::Logger logger;
 #if DUMMY_BOARD_MODE == 1
 #include "RandomDataSensor.h"
 
-ISensor *heVoltageSensor = new RandomDataSensor(0, 2);
-ISensor *o2VoltageSensor = new RandomDataSensor(9, 11);
-ISensor *atmosphericPressureSensor = new RandomDataSensor(1013, 1024);
-ISensor *temperatureSensor = new RandomDataSensor(19, 22);
+ISensor<float> *heVoltageSensor = new RandomDataSensor(0, 2);
+ISensor<float> *o2VoltageSensor = new RandomDataSensor(9, 11);
+ISensor<float> *atmosphericPressureSensor = new RandomDataSensor(1013, 1024);
+ISensor<float> *temperatureSensor = new RandomDataSensor(19, 22);
 #else
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_BMP280.h>
@@ -44,10 +44,10 @@ ISensor *temperatureSensor = new RandomDataSensor(19, 22);
 Adafruit_ADS1115 ads;
 Adafruit_BMP280 bmp;
 
-ISensor *heVoltageSensor = new HeVoltageSensor(&logger, &ads);
-ISensor *o2VoltageSensor = new O2VoltageSensor(&logger, &ads);
-ISensor *atmosphericPressureSensor = new AtmosphericPressureSensor(&logger, &bmp);
-ISensor *temperatureSensor = new TemperatureSensor(&logger, &bmp);
+ISensor<float> *heVoltageSensor = new HeVoltageSensor(&logger, &ads);
+ISensor<float> *o2VoltageSensor = new O2VoltageSensor(&logger, &ads);
+ISensor<float> *atmosphericPressureSensor = new AtmosphericPressureSensor(&logger, &bmp);
+ISensor<float> *temperatureSensor = new TemperatureSensor(&logger, &bmp);
 #endif
 
 Display display(&logger);

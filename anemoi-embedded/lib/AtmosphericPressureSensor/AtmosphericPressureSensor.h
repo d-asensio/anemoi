@@ -6,7 +6,7 @@
 #ifndef ATMOSPHERIC_PRESSURE_SENSOR_H
 #define ATMOSPHERIC_PRESSURE_SENSOR_H
 
-class AtmosphericPressureSensor : public ISensor {
+class AtmosphericPressureSensor : public ISensor<float> {
   public:
   AtmosphericPressureSensor(logging::Logger *logger, Adafruit_BMP280 *bmp);
 

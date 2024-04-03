@@ -6,7 +6,7 @@
 #ifndef O2_VOLTAGE_SENSOR_H
 #define O2_VOLTAGE_SENSOR_H
 
-class O2VoltageSensor : public ISensor {
+class O2VoltageSensor : public ISensor<float> {
 public:
     O2VoltageSensor(logging::Logger* logger, Adafruit_ADS1115* ads);
 

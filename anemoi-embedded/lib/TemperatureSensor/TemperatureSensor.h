@@ -6,7 +6,7 @@
 #ifndef TEMPERATURE_VOLTAGE_SENSOR_H
 #define TEMPERATURE_VOLTAGE_SENSOR_H
 
-class TemperatureSensor : public ISensor {
+class TemperatureSensor : public ISensor<float> {
 public:
     TemperatureSensor(logging::Logger* logger, Adafruit_BMP280* bmp);
 

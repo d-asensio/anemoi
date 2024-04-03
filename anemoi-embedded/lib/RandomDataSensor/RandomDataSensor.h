@@ -5,7 +5,7 @@
 #ifndef RANDOM_DATA_SENSOR_H
 #define RANDOM_DATA_SENSOR_H
 
-class RandomDataSensor : public ISensor {
+class RandomDataSensor : public ISensor<float> {
   public:
   RandomDataSensor(float lowerBound, float upperBound);
 

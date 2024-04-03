@@ -6,7 +6,7 @@
 #ifndef HE_CELL_VOLTAGE_SENSOR_H
 #define HE_CELL_VOLTAGE_SENSOR_H
 
-class HeVoltageSensor : public ISensor {
+class HeVoltageSensor : public ISensor<float> {
 public:
     HeVoltageSensor(logging::Logger* logger, Adafruit_ADS1115* ads);
 
@@ -14,7 +14,7 @@ public:
     virtual void loop();
     virtual bool isAvailable();
     virtual float read();
-    
+
 private:
     bool _isAvailable;
     float _lastReading;
