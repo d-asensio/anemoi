@@ -18,9 +18,10 @@ const App = () => {
     allDevices,
     connectedDevice,
     sendCalibrateSignal,
-    percentageO2,
-    atmosphericPressure,
-    temperature
+    voltageHe,
+    percentageHe,
+    voltageO2,
+    percentageO2
   } = useBLE();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
@@ -39,16 +40,20 @@ const App = () => {
         <View style={styles.dataView}>
           <PulseIndicator/>
           <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{voltageHe}</Text>
+            <Text style={styles.dataPointUnits}>mV He</Text>
+          </View>
+          <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{percentageHe}</Text>
+            <Text style={styles.dataPointUnits}>% He</Text>
+          </View>
+          <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{voltageO2}</Text>
+            <Text style={styles.dataPointUnits}>mV O2</Text>
+          </View>
+          <View style={styles.dataPointView}>
             <Text style={styles.dataPointValue}>{percentageO2}</Text>
             <Text style={styles.dataPointUnits}>% O2</Text>
-          </View>
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{atmosphericPressure}</Text>
-            <Text style={styles.dataPointUnits}>mbar</Text>
-          </View>
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{temperature}</Text>
-            <Text style={styles.dataPointUnits}>℃</Text>
           </View>
           <TouchableOpacity
             onPress={sendCalibrateSignal}

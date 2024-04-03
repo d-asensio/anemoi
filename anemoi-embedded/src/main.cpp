@@ -6,28 +6,53 @@
 #include <BLEServer.h>
 
 #include <DateTimeModule.h>
-#include <DisplayModule.h>
-#include <GasSensorsModule.h>
-#include <AtmosphericSensorModule.h>
 #include <BuzzerModule.h>
+
+#include <Adafruit_ADS1X15.h>
+#include <Adafruit_BMP280.h>
+
+#include "ISensor.h"
+#include "HeVoltageSensor.h"
+#include "O2VoltageSensor.h"
+#include "AtmosphericPressureSensor.h"
+#include "TemperatureSensor.h"
+
+#include "Display.h"
 
 #define SERVICE_UUID "9243e98a-314c-42b2-a4fc-c23d54f0f271"
 
+#define HE_VOLTAGE_CHARACTERISTIC_UUID "868b31f7-4c08-4d5f-b0fa-9e5151b19f5c"
+#define HE_PERCENTAGE_CHARACTERISTIC_UUID "61de16b4-dbcf-491a-8ed6-5ba35a9c60e7"
+#define O2_VOLTAGE_CHARACTERISTIC_UUID "55920ac9-31d3-45d3-8d4e-89566077fbd9"
 #define O2_PERCENTAGE_CHARACTERISTIC_UUID "44aa55a3-564f-4d9a-b20e-6636e0c43dfc"
-#define ATMOSPHERIC_PRESSURE_CHARACTERISTIC_UUID "68848368-6d91-49f9-9a5f-fed73463c9f6"
-#define TEMPERATURE_PRESSURE_CHARACTERISTIC_UUID "a9bac333-e37c-42a9-8abc-9b07350e189d"
 #define CALIBRATE_SIGNAL_CHARACTERISTIC_UUID "8d07c070-b5e0-4859-bc71-88b425e040c0"
 
 #define ATMOSPHERIC_O2_PERCENTAGE_AT_SEA_LEVEL 0.209
 #define ATMOSPHERIC_PRESSURE_AT_SEA_LEVEL 1013.25 // in millibars
 
+///
+logging::Logger logger;
+Adafruit_ADS1115 ads;
+Adafruit_BMP280 bmp;
+
+
+ISensor *heVoltageSensor = new HeVoltageSensor(&logger, &ads);
+ISensor *o2VoltageSensor = new O2VoltageSensor(&logger, &ads);
+ISensor *atmosphericPressureSensor = new AtmosphericPressureSensor(&logger, &bmp);
+ISensor *temperatureSensor = new TemperatureSensor(&logger, &bmp);
+
+Display display(&logger);
+///
+
 float calibrationO2SensorVoltage = 0;
+float calibrationHeSensorVoltage = 0;
 float calibrationAtmosphericPressure = 0;
 
 BLEServer *pServer = nullptr;
+BLECharacteristic *voltageHeCharacteristic;
+BLECharacteristic *percentageHeCharacteristic;
+BLECharacteristic *voltageO2Characteristic;
 BLECharacteristic *percentageO2Characteristic;
-BLECharacteristic *atmosphericPresureO2Characteristic;
-BLECharacteristic *temperatureCharacteristic;
 BLECharacteristic *callibrateSignalCharacteristic;
 
 bool deviceConnected = false;
@@ -43,9 +68,14 @@ float getO2FractionFromVoltage(float currentCellVoltage, float atmosphericO2Perc
   return atmosphericO2Percentage * currentCellVoltage / calibrationO2SensorVoltage;
 }
 
-void calibrateO2Sensor() {
-  calibrationO2SensorVoltage = readO2SensorVoltage();
-  calibrationAtmosphericPressure = readAtmosphericPressure();
+float getHeFractionFromVoltage(float currentHeSensorVoltage) {
+  return .75 / 429.00 * (currentHeSensorVoltage - calibrationHeSensorVoltage);
+}
+
+void calibrateSensors() {
+  calibrationO2SensorVoltage = o2VoltageSensor->read();
+  calibrationAtmosphericPressure = atmosphericPressureSensor->read();
+  calibrationHeSensorVoltage = heVoltageSensor->read();
 }
 
 class AnemoiBLEServerCallbacks : public BLEServerCallbacks {
@@ -84,20 +114,29 @@ void initBLEConnection() {
 
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
+
+  voltageHeCharacteristic = pService->createCharacteristic(
+          HE_VOLTAGE_CHARACTERISTIC_UUID,
+          BLECharacteristic::PROPERTY_NOTIFY);
+  voltageHeCharacteristic->addDescriptor(new BLE2902());
+
+
+  percentageHeCharacteristic = pService->createCharacteristic(
+          HE_PERCENTAGE_CHARACTERISTIC_UUID,
+          BLECharacteristic::PROPERTY_NOTIFY);
+  percentageHeCharacteristic->addDescriptor(new BLE2902());
+
+
+  voltageO2Characteristic = pService->createCharacteristic(
+          O2_VOLTAGE_CHARACTERISTIC_UUID,
+          BLECharacteristic::PROPERTY_NOTIFY);
+  voltageO2Characteristic->addDescriptor(new BLE2902());
+
+  
   percentageO2Characteristic = pService->createCharacteristic(
           O2_PERCENTAGE_CHARACTERISTIC_UUID,
           BLECharacteristic::PROPERTY_NOTIFY);
   percentageO2Characteristic->addDescriptor(new BLE2902());
-
-  atmosphericPresureO2Characteristic = pService->createCharacteristic(
-          ATMOSPHERIC_PRESSURE_CHARACTERISTIC_UUID,
-          BLECharacteristic::PROPERTY_NOTIFY);
-  atmosphericPresureO2Characteristic->addDescriptor(new BLE2902());
-
-  temperatureCharacteristic = pService->createCharacteristic(
-          TEMPERATURE_PRESSURE_CHARACTERISTIC_UUID,
-          BLECharacteristic::PROPERTY_NOTIFY);
-  temperatureCharacteristic->addDescriptor(new BLE2902());
 
   callibrateSignalCharacteristic = pService->createCharacteristic(
           CALIBRATE_SIGNAL_CHARACTERISTIC_UUID,
@@ -114,38 +153,48 @@ void initBLEConnection() {
 
 void setup() {
   Serial.begin(115200);
+  logger.setSerial(&Serial);
+
+  o2VoltageSensor->setup();
+  heVoltageSensor->setup();
+  atmosphericPressureSensor->setup();
+  temperatureSensor->setup();
+
+  display.setup();
 
   initBLEConnection();
-
   initDateTimeModule();
-  initDisplayModule();
-  initGasSensorsModule();
-  initAtmosphericSensorModule();
   initBuzzerModule();
 
-  calibrateO2Sensor();
-  showDisplayCalibratingMessage();
+  calibrateSensors();
+  display.showDisplayCalibratingMessage();
   buzzerBeep();
 }
 
 void loop() {
-  atmosphericSensorModuleLoop();
+  o2VoltageSensor->loop();
+  heVoltageSensor->loop();
+  atmosphericPressureSensor->loop();
 
-  float o2SensorVoltage = readO2SensorVoltage();
-  float currentAtmosphericPressure = readAtmosphericPressure();
+  float o2SensorVoltage = o2VoltageSensor->read();
+  float heSensorVoltage = heVoltageSensor->read();
+  float currentAtmosphericPressure = atmosphericPressureSensor->read();
+
+  ///
+
   float atmosphericO2Percentage = getAtmosphericO2Percentage(currentAtmosphericPressure);
+  float fractionHe = getHeFractionFromVoltage(heSensorVoltage);
   float fractionO2 = getO2FractionFromVoltage(o2SensorVoltage, atmosphericO2Percentage);
 
+  float percentageHe = fractionHe * 100;
   float percentageO2 = fractionO2 * 100;
 
-  float temperature = readTemperature();
-
-  showDisplayGasInformation(o2SensorVoltage, percentageO2);
+  display.showDisplayGasInformation(o2SensorVoltage, percentageO2);
 
   if (callibrateSignalReceived) {
     buzzerBeep();
-    calibrateO2Sensor();
-    showDisplayCalibratingMessage();
+    calibrateSensors();
+    display.showDisplayCalibratingMessage();
     delay(1000);
 
     callibrateSignalReceived = false;
@@ -154,17 +203,23 @@ void loop() {
   if (deviceConnected) {
     serialPrintDateTime();
 
-    // Send atmospheticPressure data
-    char atmosphericPressureTmp[50];
-    dtostrf(currentAtmosphericPressure, 6, 2, atmosphericPressureTmp);
-    atmosphericPresureO2Characteristic->setValue(atmosphericPressureTmp);
-    atmosphericPresureO2Characteristic->notify();
+    // Send He voltage data
+    char voltageHeTmp[50];
+    dtostrf(heSensorVoltage, 6, 2, voltageHeTmp);
+    voltageHeCharacteristic->setValue(voltageHeTmp);
+    voltageHeCharacteristic->notify();
 
-    // Send temperature data
-    char temperatureTmp[50];
-    dtostrf(temperature, 6, 2, temperatureTmp);
-    temperatureCharacteristic->setValue(temperatureTmp);
-    temperatureCharacteristic->notify();
+    // Send He percentage data
+    char percentageHeTmp[50];
+    dtostrf(percentageHe, 6, 2, percentageHeTmp);
+    percentageHeCharacteristic->setValue(percentageHeTmp);
+    percentageHeCharacteristic->notify();
+
+    // Send O2 voltage data
+    char voltageO2Tmp[50];
+    dtostrf(o2SensorVoltage, 6, 2, voltageO2Tmp);
+    voltageO2Characteristic->setValue(voltageO2Tmp);
+    voltageO2Characteristic->notify();
 
     // Send O2 percentage data
     char percentageO2Tmp[50];
@@ -178,7 +233,7 @@ void loop() {
   // Disconnecting
   if (!deviceConnected && oldDeviceConnected) {
     buzzerBeep();
-    showDisplayMessage("Disconnected!");
+    display.showDisplayMessage("Disconnected!");
     // Give the bluetooth stack the chance to get things ready
     delay(500);
 
@@ -195,7 +250,7 @@ void loop() {
     oldDeviceConnected = deviceConnected;
 
     buzzerBeep();
-    showDisplayMessage("Connected!");
+    display.showDisplayMessage("Connected!");
     delay(500);
   }
 }
