@@ -18,10 +18,7 @@ const App = () => {
     allDevices,
     connectedDevice,
     sendCalibrateSignal,
-    voltageHe,
-    percentageHe,
-    voltageO2,
-    percentageO2
+    data
   } = useBLE();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
@@ -39,21 +36,22 @@ const App = () => {
       {connectedDevice ? (
         <View style={styles.dataView}>
           <PulseIndicator/>
+
           <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{voltageHe}</Text>
-            <Text style={styles.dataPointUnits}>mV He</Text>
-          </View>
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{percentageHe}</Text>
-            <Text style={styles.dataPointUnits}>% He</Text>
-          </View>
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{voltageO2}</Text>
+            <Text style={styles.dataPointValue}>{data.o2SensorVoltage.toFixed(2)}</Text>
             <Text style={styles.dataPointUnits}>mV O2</Text>
           </View>
           <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{percentageO2}</Text>
-            <Text style={styles.dataPointUnits}>% O2</Text>
+            <Text style={styles.dataPointValue}>{data.heSensorVoltage.toFixed(2)}</Text>
+            <Text style={styles.dataPointUnits}>mV He</Text>
+          </View>
+          <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{data.atmosphericPressure.toFixed(2)}</Text>
+            <Text style={styles.dataPointUnits}>mBar a.p.</Text>
+          </View>
+          <View style={styles.dataPointView}>
+            <Text style={styles.dataPointValue}>{data.temperature.toFixed(2)}</Text>
+            <Text style={styles.dataPointUnits}>℃</Text>
           </View>
           <TouchableOpacity
             onPress={sendCalibrateSignal}
