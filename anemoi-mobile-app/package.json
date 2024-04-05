@@ -16,14 +16,15 @@
     "expo-device": "~5.0.0",
     "expo-splash-screen": "~0.17.5",
     "expo-status-bar": "~1.4.2",
+    "expo-system-ui": "~2.0.1",
+    "expo-updates": "~0.15.6",
     "react": "18.1.0",
     "react-dom": "18.1.0",
     "react-native": "0.70.8",
     "react-native-base64": "^0.2.1",
     "react-native-ble-plx": "^2.0.3",
     "react-native-web": "~0.18.9",
-    "expo-system-ui": "~2.0.1",
-    "expo-updates": "~0.15.6"
+    "styled-components": "^6.1.8"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",

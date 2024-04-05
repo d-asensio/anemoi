@@ -1,18 +1,23 @@
 import React from "react";
 
-import {Image, View} from "react-native";
+import styled from "styled-components/native";
 
-export const PulseIndicator = () => {
-  console.log(require("./img/anemoi-logo.png"))
+const Wrapper = styled.View`
+    margin-top: 64px;
+`;
+
+const Img = styled.Image`
+    width: 300px;
+    height: 175px;
+`;
+
+
+export const Logo = () => {
   return (
-    <View>
-      <Image
-        style={{
-          width: 300,
-          height: 175
-        }}
-        source={require("./img/anemoi-logo.png")}
+    <Wrapper>
+      <Img
+        source={require("../img/anemoi-logo.png")}
       />
-    </View>
+    </Wrapper>
   );
 };

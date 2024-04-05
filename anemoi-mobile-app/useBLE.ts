@@ -8,7 +8,9 @@ const ANEMOI_SERVICE_UUID = "9243e98a-314c-42b2-a4fc-c23d54f0f271";
 const RX_CHARACTERISTIC_UUID = "44aa55a3-564f-4d9a-b20e-6636e0c43dfc";
 const CALIBRATE_CHARACTERISTIC_UUID = "8d07c070-b5e0-4859-bc71-88b425e040c0"
 
-interface AnalyzerData {
+export interface AnalyzerData {
+  percentageO2: number;
+  percentageHe: number;
   o2SensorVoltage: number;
   heSensorVoltage: number;
   atmosphericPressure: number;
@@ -30,6 +32,8 @@ function useBLE(): BluetoothLowEnergyApi {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [data, setData] = useState<AnalyzerData>({
+    percentageO2: 0,
+    percentageHe: 0,
     o2SensorVoltage: 0,
     heSensorVoltage: 0,
     atmosphericPressure: 0,

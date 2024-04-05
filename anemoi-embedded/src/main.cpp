@@ -7,11 +7,12 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 
-#include <BuzzerModule.h>
-#include <DateTimeModule.h>
+#include <RTClib.h>
 
 #include "ISensor.h"
 
+#include "Buzzer.h"
+#include "RTCTime.h"
 #include "Display.h"
 
 #define SERVICE_UUID "9243e98a-314c-42b2-a4fc-c23d54f0f271"
@@ -36,9 +37,9 @@ ISensor<float> *temperatureSensor = new RandomDataSensor(19, 22);
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_BMP280.h>
 
-#include "O2VoltageSensor.h"
-#include "HeVoltageSensor.h"
 #include "AtmosphericPressureSensor.h"
+#include "HeVoltageSensor.h"
+#include "O2VoltageSensor.h"
 #include "TemperatureSensor.h"
 
 Adafruit_ADS1115 ads;
@@ -50,12 +51,17 @@ ISensor<float> *atmosphericPressureSensor = new AtmosphericPressureSensor(&logge
 ISensor<float> *temperatureSensor = new TemperatureSensor(&logger, &bmp);
 #endif
 
+RTC_DS3231 rtc;
+
 Display display(&logger);
+Buzzer buzzer(&logger);
+RTCTime rtcTime(&logger, &rtc);
 ///
 
 float calibrationO2SensorVoltage = 0;
 float calibrationHeSensorVoltage = 0;
 float calibrationAtmosphericPressure = 0;
+bool callibrateSignalReceived = false;
 
 BLEServer *pServer = nullptr;
 BLECharacteristic *txCharacteristic;
@@ -63,8 +69,6 @@ BLECharacteristic *callibrateSignalCharacteristic;
 
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
-
-bool callibrateSignalReceived = false;
 
 float getAtmosphericO2Percentage(float currentAtmosphericPressure) {
   return (ATMOSPHERIC_O2_PERCENTAGE_AT_SEA_LEVEL * currentAtmosphericPressure) / ATMOSPHERIC_PRESSURE_AT_SEA_LEVEL;
@@ -148,14 +152,14 @@ void setup() {
   temperatureSensor->setup();
 
   display.setup();
+  buzzer.setup();
+  rtcTime.setup();
 
   initBLEConnection();
-  initDateTimeModule();
-  initBuzzerModule();
 
   calibrateSensors();
   display.showDisplayCalibratingMessage();
-  buzzerBeep();
+  buzzer.beep();
 }
 
 void loop() {
@@ -181,7 +185,7 @@ void loop() {
   display.showDisplayGasInformation(o2SensorVoltage, percentageO2);
 
   if (callibrateSignalReceived) {
-    buzzerBeep();
+    buzzer.beep();
     calibrateSensors();
     display.showDisplayCalibratingMessage();
     delay(1000);
@@ -190,12 +194,14 @@ void loop() {
   }
 
   if (deviceConnected) {
-    serialPrintDateTime();
+    rtcTime.serialPrintDateTime();
 
     // Serialize data
     char output[200];
     JsonDocument doc;
 
+    doc["percentageO2"] = percentageO2;
+    doc["percentageHe"] = percentageHe;
     doc["o2SensorVoltage"] = o2SensorVoltage;
     doc["heSensorVoltage"] = heSensorVoltage;
     doc["atmosphericPressure"] = currentAtmosphericPressure;
@@ -216,7 +222,7 @@ void loop() {
 
   // Disconnecting
   if (!deviceConnected && oldDeviceConnected) {
-    buzzerBeep();
+    buzzer.beep();
     display.showDisplayMessage("Disconnected!");
     // Give the bluetooth stack the chance to get things ready
     delay(500);
@@ -233,7 +239,7 @@ void loop() {
     Serial.println("-- Client connected --");
     oldDeviceConnected = deviceConnected;
 
-    buzzerBeep();
+    buzzer.beep();
     display.showDisplayMessage("Connected!");
     delay(500);
   }

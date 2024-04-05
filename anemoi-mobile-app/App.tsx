@@ -1,14 +1,18 @@
 import React, {useState} from "react";
-import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import {SafeAreaView, StyleSheet,} from "react-native";
 import DeviceModal from "./DeviceConnectionModal";
-import {PulseIndicator} from "./PulseIndicator";
 import useBLE from "./useBLE";
+import {Button} from "./components/Button";
+import styled from "styled-components/native";
+import {StartScreen} from "./screens/StartScreen";
+import {SecondaryButton} from "./components/SecondaryButton";
+import {LiveDataScreen} from "./screens/LiveDataScreen";
+
+const Section = styled.View`
+    padding-right: 24px;
+    padding-left: 24px;
+`;
+
 
 const App = () => {
   const {
@@ -34,49 +38,24 @@ const App = () => {
   return (
     <SafeAreaView style={styles.container}>
       {connectedDevice ? (
-        <View style={styles.dataView}>
-          <PulseIndicator/>
-
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{data.o2SensorVoltage.toFixed(2)}</Text>
-            <Text style={styles.dataPointUnits}>mV O2</Text>
-          </View>
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{data.heSensorVoltage.toFixed(2)}</Text>
-            <Text style={styles.dataPointUnits}>mV He</Text>
-          </View>
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{data.atmosphericPressure.toFixed(2)}</Text>
-            <Text style={styles.dataPointUnits}>mBar a.p.</Text>
-          </View>
-          <View style={styles.dataPointView}>
-            <Text style={styles.dataPointValue}>{data.temperature.toFixed(2)}</Text>
-            <Text style={styles.dataPointUnits}>℃</Text>
-          </View>
-          <TouchableOpacity
-            onPress={sendCalibrateSignal}
-            style={styles.calibrateButton}
-          >
-            <Text style={styles.calibrateButtonText}>
-              Calibrate
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <LiveDataScreen data={data}/>
       ) : (
-        <View style={styles.noConnectedDevicesView}>
-          <Text style={styles.noConnectedDevicesText}>
-            Please connect to the analyzer to see its data
-          </Text>
-        </View>
+        <StartScreen/>
       )}
-      <TouchableOpacity
-        onPress={connectedDevice ? disconnectFromDevice : openModal}
-        style={styles.ctaButton}
-      >
-        <Text style={styles.ctaButtonText}>
-          {connectedDevice ? "Disconnect" : "Connect"}
-        </Text>
-      </TouchableOpacity>
+      <Section>
+        {connectedDevice
+          ? (
+            <SecondaryButton onPress={sendCalibrateSignal}>
+              {"Calibarte Sensors"}
+            </SecondaryButton>
+          )
+          : (
+            <Button onPress={openModal}>
+              {"Connect"}
+            </Button>
+          )
+        }
+      </Section>
       <DeviceModal
         closeModal={hideModal}
         visible={isModalVisible}
@@ -90,6 +69,7 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: "space-between",
     backgroundColor: "#f2f2f2",
   },
   dataView: {
@@ -113,29 +93,10 @@ const styles = StyleSheet.create({
   dataPointUnits: {
     fontSize: 20
   },
-  noConnectedDevicesView: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   noConnectedDevicesText: {
     fontSize: 20,
     textAlign: "center",
     marginHorizontal: 40,
-    color: "#2d2a32",
-  },
-  ctaButton: {
-    backgroundColor: "#f9dc5c",
-    justifyContent: "center",
-    alignItems: "center",
-    height: 50,
-    marginHorizontal: 20,
-    marginBottom: 5,
-    borderRadius: 8,
-  },
-  ctaButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
     color: "#2d2a32",
   },
   calibrateButton: {
