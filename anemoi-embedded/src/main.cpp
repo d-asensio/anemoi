@@ -117,7 +117,7 @@ class AnemoiBLECharacteristicCallbacks : public BLECharacteristicCallbacks {
 };
 
 void initBLEConnection() {
-  BLEDevice::init("Anemoi Analyzer Nano");
+  BLEDevice::init("Anemoi Nano");
 
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new AnemoiBLEServerCallbacks());

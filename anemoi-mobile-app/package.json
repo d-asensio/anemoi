@@ -5,11 +5,11 @@
     "start": "expo start --dev-client",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:dev": "npx eas build --profile development --platform ios"
   },
   "dependencies": {
     "@config-plugins/react-native-ble-plx": "^5.0.0",
-    "@shopify/react-native-skia": "0.1.157",
     "eas-cli": "^7.5.0",
     "expo": "~47.0.14",
     "expo-dev-client": "~2.0.1",
@@ -18,12 +18,14 @@
     "expo-status-bar": "~1.4.2",
     "expo-system-ui": "~2.0.1",
     "expo-updates": "~0.15.6",
+    "lucide-react-native": "^0.365.0",
     "react": "18.1.0",
     "react-dom": "18.1.0",
     "react-native": "0.70.8",
     "react-native-base64": "^0.2.1",
     "react-native-ble-plx": "^2.0.3",
-    "react-native-web": "~0.18.9",
+    "react-native-svg": "14.1.0",
+    "react-native-web": "~0.19.6",
     "styled-components": "^6.1.8"
   },
   "devDependencies": {

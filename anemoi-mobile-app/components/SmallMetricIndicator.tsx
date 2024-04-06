@@ -4,28 +4,28 @@ import React from "react";
 const Wrapper = styled.View`
   width: 100%;
   flex-direction: row;
-  align-items: center;
   justify-content: space-between;
-  padding-right: 32px;
-  padding-left: 32px;
-  margin-bottom: 16px;
+  align-items: baseline;
+  padding-right: 16px;
+  padding-left: 16px;
+  margin-bottom: 8px;
 `
 const Symbol = styled.Text`
-    font-size: 48px;
+    font-size: 24px;
     font-weight: bold;
 `
 const Value = styled.Text`
-    font-size: 40px;
+    font-size: 32px;
     font-weight: normal;
 `
 
-export const GasPercentageIndicator = ({symbol, value}: { symbol: string, value: number }) => (
+export const SmallMetricIndicator = ({symbol, value, unit, precision = 2}: { symbol: string, value: number, precision?: number, unit: string }) => (
   <Wrapper>
     <Symbol>
       {symbol}
     </Symbol>
     <Value>
-      {value.toFixed(2)}%
+      {value.toFixed(precision)} {unit}
     </Value>
   </Wrapper>
 )

@@ -4,28 +4,28 @@ import React from "react";
 const Wrapper = styled.View`
   width: 100%;
   flex-direction: row;
+  align-items: center;
   justify-content: space-between;
-  align-items: baseline;
-  padding-right: 16px;
-  padding-left: 16px;
-  margin-bottom: 8px;
+  padding-right: 32px;
+  padding-left: 32px;
+  margin-bottom: 16px;
 `
 const Symbol = styled.Text`
-    font-size: 24px;
+    font-size: 48px;
     font-weight: bold;
 `
 const Value = styled.Text`
-    font-size: 32px;
+    font-size: 40px;
     font-weight: normal;
 `
 
-export const MetricIndicator = ({symbol, value, unit, precision = 2}: { symbol: string, value: number, precision?: number, unit: string }) => (
+export const MetricIndicator = ({symbol, value, unit}: { symbol: string, value: number, unit: string }) => (
   <Wrapper>
     <Symbol>
       {symbol}
     </Symbol>
     <Value>
-      {value.toFixed(precision)} {unit}
+      {value.toFixed(2)} {unit}
     </Value>
   </Wrapper>
 )

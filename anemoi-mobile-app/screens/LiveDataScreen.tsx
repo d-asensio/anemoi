@@ -1,6 +1,6 @@
 import type {AnalyzerData} from "../useBLE";
-import {GasPercentageIndicator} from "../components/GasPercentageIndicator";
 import {MetricIndicator} from "../components/MetricIndicator";
+import {SmallMetricIndicator} from "../components/SmallMetricIndicator";
 import React from "react";
 import styled from "styled-components/native";
 import {ConnectedDeviceBadge} from "../components/ConnectedDeviceBadge";
@@ -11,34 +11,35 @@ const Wrapper = styled.View`
     padding-left: 24px;
 `;
 
-
 export function LiveDataScreen({data}: { data: AnalyzerData }) {
   return (
     <Wrapper>
-      <GasPercentageIndicator
+      <MetricIndicator
         symbol="O2"
         value={data.percentageO2}
+        unit="%"
       />
-      <GasPercentageIndicator
+      <MetricIndicator
         symbol="He"
         value={data.percentageHe}
+        unit="%"
       />
       <ConnectedDeviceBadge
         label="Connected"
         deviceName="Anemoi Mini"
       />
-      <MetricIndicator
+      <SmallMetricIndicator
         symbol="Temperature"
         value={data.temperature}
         unit="℃"
       />
-      <MetricIndicator
+      <SmallMetricIndicator
         symbol="Relative Humidity"
         value={42}
         precision={0}
         unit="%"
       />
-      <MetricIndicator
+      <SmallMetricIndicator
         symbol="Atm. Pressure"
         value={data.atmosphericPressure / 1000}
         unit="bar"
