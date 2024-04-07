@@ -1,14 +1,22 @@
 {
   "expo": {
-    "name": "anemoi-analyzer-app",
-    "slug": "anemoi-analyzer-app",
+    "name": "Anemoi",
+    "slug": "anemoi-analyzer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "plugins": [
       [
-        "@config-plugins/react-native-ble-plx",
+        "react-native-ble-plx",
         {
           "isBackgroundEnabled": true,
           "modes": [
@@ -19,39 +27,22 @@
         }
       ]
     ],
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dasensio.anemoi-analyzer-app"
+      "bundleIdentifier": "com.dasensio.anemoianalyzer"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
-      },
-      "permissions": [
-        "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_CONNECT"
-      ],
-      "package": "com.dasensio.anemoi-analyzer-app"
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "fd210be7-5090-4c4c-b246-8e67567694b9"
+        "projectId": "8f710cbf-85c0-47f6-9863-2950d17c14e4"
       }
     }
   }
